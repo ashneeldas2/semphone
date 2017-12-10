@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <errno.h>
 #define KEY 6430
+#define SHMKEY 1111
 
 int create() {
     int sd = semget(KEY, 1, IPC_CREAT | IPC_EXCL | 0644);
@@ -16,20 +17,21 @@ int create() {
         printf("The semaphore already exists!\n");
     }
     else {
-        int val = 1;
-        semctl(sd, 0, SETVAL, val);
+        union semun su; 
+        su.val = 1;
+        semctl(sd, 0, SETVAL, su);
         printf("semaphore created: %d\n", KEY);
-        printf("value set: %d\n", val);
+        printf("value set: %d\n", su.val);
     }
     int fd = open("story.txt", O_CREAT | O_RDWR | O_TRUNC, 0644);
+    close(fd);
     printf("story.txt file created\n");
-    int sm = shmget(KEY, 1000, IPC_CREAT | IPC_EXCL); 
+    int sm = shmget(SHMKEY, sizeof(int), IPC_CREAT | IPC_EXCL | 0644); 
     if (sm == -1) {
         printf("Shared memory already exists!\n");
     }
     else {
-        shmat(sm, 0, 0);
-        printf("shared memory created: %d\n", KEY);
+        printf("shared memory created: %d\n", SHMKEY);
     }
     return 0;
 }
@@ -40,14 +42,20 @@ int my_remove() {
     read(fd, &story, 1000);
     printf("%s\n", story);
     remove("story.txt");
-    int sd = semget(KEY, 0, 0);
+    printf("story.txt removed\n");
+    int sd = semget(KEY, 1, 0);
     printf("semaphore removed: %d\n", semctl(sd, 0, IPC_RMID));
-    int sm = shmget(KEY, 0, 0);
+    int sm = shmget(SHMKEY, sizeof(int), 0);
     printf("shared memory removed: %d\n", shmctl(sm, 0, IPC_RMID));
     return 0;
 }
 
 int view() {
+    int fd = open("story.txt", O_RDONLY, 0644);
+    char story[1000]; 
+    read(fd, &story, 1000);
+    close(fd);
+    printf("%s\n", story);
     return 0;
 }
 
